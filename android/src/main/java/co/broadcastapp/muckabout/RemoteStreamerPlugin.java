@@ -18,9 +18,7 @@ import android.os.Looper;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
-
 import androidx.core.content.ContextCompat;
-
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -36,9 +34,6 @@ import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.source.hls.HlsMediaSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
-
-import org.json.JSONException;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -46,9 +41,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.json.JSONException;
 
 @CapacitorPlugin(name = "RemoteStreamer")
 public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudioFocusChangeListener {
+
     private ExoPlayer player;
     private boolean isLooping = false;
     private DefaultDataSource.Factory dataSourceFactory;
@@ -76,7 +73,6 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
         }
     };
 
-
     @Override
     public void load() {
         super.load();
@@ -87,23 +83,22 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
         String deviceModel = android.os.Build.MODEL;
         String osVersion = android.os.Build.VERSION.RELEASE;
         try {
-            versionName = context.getPackageManager()
-            .getPackageInfo(context.getPackageName(), 0).versionName;
+            versionName = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName;
         } catch (Exception e) {
             Log.e("RemoteStreamerPlugin", "Failed to get version name", e);
         }
         String userAgent = "WNYC-App/" + versionName + " (Android " + osVersion + "; " + deviceModel + ")";
-        DefaultHttpDataSource.Factory httpDataSourceFactory =
-            new DefaultHttpDataSource.Factory().setUserAgent(userAgent);
+        DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory().setUserAgent(userAgent);
         dataSourceFactory = new DefaultDataSource.Factory(context, httpDataSourceFactory);
         mediaSession = new MediaSessionCompat(context, "wnyc");
 
         AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build();
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build();
 
-        focusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+        focusRequest =
+            new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                 .setAudioAttributes(audioAttributes)
                 .setAcceptsDelayedFocusGain(true)
                 .setOnAudioFocusChangeListener(this)
@@ -115,7 +110,7 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
         ContextCompat.startForegroundService(getContext(), intent);
         getContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
-    
+
     @PluginMethod
     public void setLoop(PluginCall call) {
         Boolean loop = call.getBoolean("loop", false);
@@ -145,82 +140,104 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
             }
         }
 
-        handler.post(() -> {
-            releasePlayer();
-            player = new ExoPlayer.Builder(getContext()).build();
-            player.setRepeatMode(isLooping ? Player.REPEAT_MODE_ONE : Player.REPEAT_MODE_OFF); // Set repeat mode
-            MediaSource mediaSource;
-            if (url.contains(".m3u8")) {
-                mediaSource = new HlsMediaSource.Factory(dataSourceFactory)
-                        .createMediaSource(MediaItem.fromUri(url));
-                this.isLiveStream = true;
-                service.setDuration(0);
-                service.setPosition(0);
-            } else {
-                mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
-                        .createMediaSource(MediaItem.fromUri(url));
-                this.isLiveStream = false;
+        handler.post(
+            () -> {
+                releasePlayer();
+                player =
+                    new ExoPlayer.Builder(getContext())
+                        .setLoadControl(
+                            new DefaultLoadControl.Builder()
+                                .setBufferDurationsMs(
+                                    32 * 1024, // Min buffer
+                                    64 * 1024, // Max buffer
+                                    500, // Buffer for playback
+                                    500 // Buffer for rebuffer
+                                )
+                                .build()
+                        )
+                        .build();
+                player.setRepeatMode(isLooping ? Player.REPEAT_MODE_ONE : Player.REPEAT_MODE_OFF); // Set repeat mode
+
+                // Gapless playback settings
+                player.setHandleAudioBecomingNoisy(true);
+                player.setAudioAttributes(
+                    new AudioAttributes.Builder().setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).setUsage(C.USAGE_MEDIA).build(),
+                    true
+                );
+
+                MediaSource mediaSource;
+                if (url.contains(".m3u8")) {
+                    mediaSource = new HlsMediaSource.Factory(dataSourceFactory).createMediaSource(MediaItem.fromUri(url));
+                    this.isLiveStream = true;
+                    service.setDuration(0);
+                    service.setPosition(0);
+                } else {
+                    mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(MediaItem.fromUri(url));
+                    this.isLiveStream = false;
+                }
+
+                player.setMediaSource(mediaSource);
+                player.prepare();
+
+                setupPlayerListeners();
+
+                int focusResult = audioManager.requestAudioFocus(focusRequest);
+                if (focusResult == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                    player.play();
+                }
+                Log.d("stream", "playing");
+                service.setPlaybackState(PlaybackStateCompat.STATE_PLAYING);
+                service.update();
+
+                notifyListeners("play", new JSObject());
+                call.resolve();
             }
-
-            player.setMediaSource(mediaSource);
-            player.prepare();
-
-            setupPlayerListeners();
-
-            int focusResult = audioManager.requestAudioFocus(focusRequest);
-            if (focusResult == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-                player.play();
-            }
-            Log.d("stream", "playing");
-            service.setPlaybackState(PlaybackStateCompat.STATE_PLAYING);
-            service.update();
-
-            notifyListeners("play", new JSObject());
-            call.resolve();
-        });
+        );
     }
 
     private void setupPlayerListeners() {
-        player.addListener(new Player.Listener() {
-            @Override
-            public void onPlaybackStateChanged(int state) {
-                switch (state) {
-                    case Player.STATE_BUFFERING:
-                        notifyListeners("buffering", new JSObject().put("isBuffering", true));
-                        break;
-                    case Player.STATE_READY:
-                        notifyListeners("buffering", new JSObject().put("isBuffering", false));
-                        if (!isLiveStream) startUpdatingTime();
-                        break;
-                    case Player.STATE_ENDED:
-                        stopUpdatingTime();
-                        stop(true);
-                        break;
+        player.addListener(
+            new Player.Listener() {
+                @Override
+                public void onPlaybackStateChanged(int state) {
+                    switch (state) {
+                        case Player.STATE_BUFFERING:
+                            notifyListeners("buffering", new JSObject().put("isBuffering", true));
+                            break;
+                        case Player.STATE_READY:
+                            notifyListeners("buffering", new JSObject().put("isBuffering", false));
+                            if (!isLiveStream) startUpdatingTime();
+                            break;
+                        case Player.STATE_ENDED:
+                            stopUpdatingTime();
+                            stop(true);
+                            break;
+                    }
                 }
-            }
 
-            @Override
-            public void onIsPlayingChanged(boolean isPlaying) {
-                if (isPlaying) {
-                    notifyListeners("play", new JSObject());
-                } else {
-                    notifyListeners("pause", new JSObject());
+                @Override
+                public void onIsPlayingChanged(boolean isPlaying) {
+                    if (isPlaying) {
+                        notifyListeners("play", new JSObject());
+                    } else {
+                        notifyListeners("pause", new JSObject());
+                    }
                 }
-            }
 
-            @Override
-            public void onPlayerError(PlaybackException error) {
-                if (error.getCause().getClass().equals(java.net.ConnectException.class)) {
-                    pause();
+                @Override
+                public void onPlayerError(PlaybackException error) {
+                    if (error.getCause().getClass().equals(java.net.ConnectException.class)) {
+                        pause();
+                    }
+                    if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
+                        player.seekToDefaultPosition();
+                        player.prepare();
+                        player.play();
+                    }
+                    notifyListeners("error", new JSObject().put("message", error.getMessage()));
                 }
-                if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
-                    player.seekToDefaultPosition();
-                    player.prepare();
-                    player.play();
-                }
-                notifyListeners("error", new JSObject().put("message", error.getMessage()));
             }
-        });
+        );
     }
 
     @PluginMethod
@@ -232,13 +249,15 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
     private void pause() {
         if (player != null) {
             Log.d("RemoteStreamerPlugin", "pausing playback");
-            handler.post(() -> {
-                service.setPlaybackState(PlaybackStateCompat.STATE_PAUSED);
-                service.update();
-                if (player != null) {
-                    player.pause();
+            handler.post(
+                () -> {
+                    service.setPlaybackState(PlaybackStateCompat.STATE_PAUSED);
+                    service.update();
+                    if (player != null) {
+                        player.pause();
+                    }
                 }
-            });
+            );
             notifyListeners("pause", new JSObject());
         }
     }
@@ -254,15 +273,17 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
             Log.d("RemoteStreamerPlugin", "resuming playback");
             int focusResult = audioManager.requestAudioFocus(focusRequest);
             if (focusResult == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-                handler.post(() -> {
-                    if (player != null) {
-                        if (isLiveStream) {
-                            // if a live stream is paused and resumed, catch up to live
-                            player.seekToDefaultPosition();
+                handler.post(
+                    () -> {
+                        if (player != null) {
+                            if (isLiveStream) {
+                                // if a live stream is paused and resumed, catch up to live
+                                player.seekToDefaultPosition();
+                            }
+                            player.play();
                         }
-                        player.play();
                     }
-                });
+                );
                 service.setPlaybackState(PlaybackStateCompat.STATE_PLAYING);
                 service.update();
                 notifyListeners("play", new JSObject());
@@ -342,37 +363,40 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
 
     private void releasePlayer() {
         if (player != null) {
-            handler.post(() -> {
-                Log.d("RemoteStreamerPlugin", "releaseing player");
-                stopUpdatingTime();
-                player.release();
-                player = null;
-                audioManager.abandonAudioFocusRequest(focusRequest);
-            });
+            handler.post(
+                () -> {
+                    Log.d("RemoteStreamerPlugin", "releaseing player");
+                    stopUpdatingTime();
+                    player.release();
+                    player = null;
+                    audioManager.abandonAudioFocusRequest(focusRequest);
+                }
+            );
         }
     }
 
     private void startUpdatingTime() {
         stopUpdatingTime();
-        updateTimeTask = new Runnable() {
-            @Override
-            public void run() {
-                if (player != null && player.isPlaying()) {
-                    long currentTime = player.getCurrentPosition();
-                    long duration = player.getDuration();
-                    service.setDuration(duration);
-                    service.setPosition(currentTime);
-                    service.update();
-                    JSObject timeData = new JSObject()
+        updateTimeTask =
+            new Runnable() {
+                @Override
+                public void run() {
+                    if (player != null && player.isPlaying()) {
+                        long currentTime = player.getCurrentPosition();
+                        long duration = player.getDuration();
+                        service.setDuration(duration);
+                        service.setPosition(currentTime);
+                        service.update();
+                        JSObject timeData = new JSObject()
                             .put("currentTime", currentTime / 1000.0)
                             .put("duration", duration == C.TIME_UNSET ? 0 : duration / 1000.0);
-                    notifyListeners("timeUpdate", timeData);
-                    handler.postDelayed(this, 500);
-                } else {
-                    handler.postDelayed(this, 1000);
+                        notifyListeners("timeUpdate", timeData);
+                        handler.postDelayed(this, 500);
+                    } else {
+                        handler.postDelayed(this, 1000);
+                    }
                 }
-            }
-        };
+            };
         handler.post(updateTimeTask);
     }
 
@@ -397,61 +421,62 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
             return;
         }
 
-        handler.post(() -> {
-            switch (focusChange) {
-                case AudioManager.AUDIOFOCUS_GAIN:
-                    player.setVolume(1.0f);
-                    if (resumeOnFocusLossTransient) {
-                        player.play();
-                    }
-                    break;
-                case AudioManager.AUDIOFOCUS_LOSS:
-                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                    resumeOnFocusLossTransient = player.isPlaying();
-                    player.pause();
-                    break;
-                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                    player.setVolume(0.1f);
-                    break;
+        handler.post(
+            () -> {
+                switch (focusChange) {
+                    case AudioManager.AUDIOFOCUS_GAIN:
+                        player.setVolume(1.0f);
+                        if (resumeOnFocusLossTransient) {
+                            player.play();
+                        }
+                        break;
+                    case AudioManager.AUDIOFOCUS_LOSS:
+                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                        resumeOnFocusLossTransient = player.isPlaying();
+                        player.pause();
+                        break;
+                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                        player.setVolume(0.1f);
+                        break;
+                }
             }
-        });
+        );
     }
 
     @PluginMethod
     public void setVolume(PluginCall call) {
-        handler.post(() -> {
-            Float volume;
-            try {
-                volume = (float) call.getData().getDouble("volume");
-            } catch (JSONException e) {
-                throw new RuntimeException(e);
+        handler.post(
+            () -> {
+                Float volume;
+                try {
+                    volume = (float) call.getData().getDouble("volume");
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+                player.setVolume(volume);
             }
-            player.setVolume(volume);
-        });
+        );
     }
 
     public void actionCallback(String action) {
         actionCallback(action, new JSObject());
     }
+
     public void actionCallback(String action, JSObject data) {
         Log.d("streamer", "action: " + action);
         switch (action) {
             case "pause":
                 pause();
                 break;
-
             case "play":
                 resume();
                 break;
-
             case "nexttrack":
                 seekTo(player.getCurrentPosition() + 10000);
                 break;
-
             case "previoustrack":
                 seekTo(player.getCurrentPosition() - 10000);
                 break;
-
             case "seekto":
                 try {
                     long pos = data.getLong("seekTime");
@@ -464,7 +489,8 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
     }
 
     private final Set<String> lsactions = Set.of("pause", "play");
-    private final Set<String> odactions = Set.of("pause", "play", "nexttrack", "previoustrack","seekto");
+    private final Set<String> odactions = Set.of("pause", "play", "nexttrack", "previoustrack", "seekto");
+
     public boolean hasActionHandler(String actionName) {
         if (isLiveStream) {
             return this.lsactions.contains(actionName);

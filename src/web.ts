@@ -11,7 +11,7 @@ export class RemoteStreamerWeb extends WebPlugin implements RemoteStreamerPlugin
   }
   private audio: HTMLAudioElement | null = null;
   private intervalId: number | null = null;
-  private isLooping: boolean = false;
+  private isLooping = false;
 
   async setLoop(options: { loop: boolean }): Promise<void> {
     this.isLooping = options.loop;
@@ -30,6 +30,18 @@ export class RemoteStreamerWeb extends WebPlugin implements RemoteStreamerPlugin
     this.audio = new Audio(options.url);
     this.audio.id = "pluginAudioElement"; // Assigning an ID to the audio element
     this.audio.loop = this.isLooping; // Set loop property
+    // Minimize loop gap
+    this.audio.preload = "auto";
+    this.audio.preservesPitch = true;
+
+    // Wait for enough data before playing
+    await new Promise((resolve) => {
+      if (this.audio) {
+        this.audio.addEventListener('canplaythrough', resolve, { once: true });
+        this.audio.load();
+      }
+    });
+
     this.setupEventListeners(); // Call setupEventListeners here
     await this.audio.play();
     this.notifyListeners('play', {});
