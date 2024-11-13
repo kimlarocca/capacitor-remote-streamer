@@ -1,0 +1,337 @@
+{
+  "api": {
+    "name": "RemoteStreamerPlugin",
+    "slug": "remotestreamerplugin",
+    "docs": "",
+    "tags": [],
+    "methods": [
+      {
+        "name": "play",
+        "signature": "(options: { url: string; enableCommandCenter?: boolean; enableCommandCenterSeek?: boolean; }) => Promise<void>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "",
+            "type": "{ url: string; enableCommandCenter?: boolean | undefined; enableCommandCenterSeek?: boolean | undefined; }"
+          }
+        ],
+        "returns": "Promise<void>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "play"
+      },
+      {
+        "name": "pause",
+        "signature": "() => Promise<void>",
+        "parameters": [],
+        "returns": "Promise<void>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "pause"
+      },
+      {
+        "name": "resume",
+        "signature": "() => Promise<void>",
+        "parameters": [],
+        "returns": "Promise<void>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "resume"
+      },
+      {
+        "name": "seekTo",
+        "signature": "(options: { position: number; }) => Promise<void>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "",
+            "type": "{ position: number; }"
+          }
+        ],
+        "returns": "Promise<void>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "seekto"
+      },
+      {
+        "name": "stop",
+        "signature": "() => Promise<void>",
+        "parameters": [],
+        "returns": "Promise<void>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "stop"
+      },
+      {
+        "name": "setVolume",
+        "signature": "(options: { volume: number; }) => Promise<void>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "",
+            "type": "{ volume: number; }"
+          }
+        ],
+        "returns": "Promise<void>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "setvolume"
+      },
+      {
+        "name": "setPlaybackRate",
+        "signature": "(options: { rate: number; }) => Promise<void>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "",
+            "type": "{ rate: number; }"
+          }
+        ],
+        "returns": "Promise<void>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "setplaybackrate"
+      },
+      {
+        "name": "setNowPlayingInfo",
+        "signature": "(options: { title: string; artist: string; album: string; duration: string; imageUrl: string; isLiveStream: boolean; }) => Promise<void>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "",
+            "type": "{ title: string; artist: string; album: string; duration: string; imageUrl: string; isLiveStream: boolean; }"
+          }
+        ],
+        "returns": "Promise<void>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "setnowplayinginfo"
+      },
+      {
+        "name": "addListener",
+        "signature": "(eventName: 'play' | 'pause' | 'stop' | 'timeUpdate' | 'buffering' | 'error', listenerFunc: (data: RemoteStreamerEventData) => void) => Promise<PluginListenerHandle>",
+        "parameters": [
+          {
+            "name": "eventName",
+            "docs": "",
+            "type": "'error' | 'play' | 'pause' | 'stop' | 'timeUpdate' | 'buffering'"
+          },
+          {
+            "name": "listenerFunc",
+            "docs": "",
+            "type": "(data: RemoteStreamerEventData) => void"
+          }
+        ],
+        "returns": "Promise<PluginListenerHandle>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [
+          "PluginListenerHandle",
+          "RemoteStreamerEventData"
+        ],
+        "slug": "addlistenererror--play--pause--stop--timeupdate--buffering-"
+      },
+      {
+        "name": "removeAllListeners",
+        "signature": "() => Promise<void>",
+        "parameters": [],
+        "returns": "Promise<void>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "removealllisteners"
+      }
+    ],
+    "properties": []
+  },
+  "interfaces": [
+    {
+      "name": "PluginListenerHandle",
+      "slug": "pluginlistenerhandle",
+      "docs": "",
+      "tags": [],
+      "methods": [],
+      "properties": [
+        {
+          "name": "remove",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "() => Promise<void>"
+        }
+      ]
+    },
+    {
+      "name": "PlayEvent",
+      "slug": "playevent",
+      "docs": "",
+      "tags": [],
+      "methods": [],
+      "properties": [
+        {
+          "name": "type",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "'play'"
+        }
+      ]
+    },
+    {
+      "name": "PauseEvent",
+      "slug": "pauseevent",
+      "docs": "",
+      "tags": [],
+      "methods": [],
+      "properties": [
+        {
+          "name": "type",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "'pause'"
+        }
+      ]
+    },
+    {
+      "name": "StopEvent",
+      "slug": "stopevent",
+      "docs": "",
+      "tags": [],
+      "methods": [],
+      "properties": [
+        {
+          "name": "type",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "'stop'"
+        }
+      ]
+    },
+    {
+      "name": "TimeUpdateEvent",
+      "slug": "timeupdateevent",
+      "docs": "",
+      "tags": [],
+      "methods": [],
+      "properties": [
+        {
+          "name": "type",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "'timeUpdate'"
+        },
+        {
+          "name": "currentTime",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "name": "BufferingEvent",
+      "slug": "bufferingevent",
+      "docs": "",
+      "tags": [],
+      "methods": [],
+      "properties": [
+        {
+          "name": "type",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "'buffering'"
+        },
+        {
+          "name": "isBuffering",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "ErrorEvent",
+      "slug": "errorevent",
+      "docs": "",
+      "tags": [],
+      "methods": [],
+      "properties": [
+        {
+          "name": "type",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "'error'"
+        },
+        {
+          "name": "message",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "enums": [],
+  "typeAliases": [
+    {
+      "name": "RemoteStreamerEventData",
+      "slug": "remotestreamereventdata",
+      "docs": "",
+      "types": [
+        {
+          "text": "PlayEvent",
+          "complexTypes": [
+            "PlayEvent"
+          ]
+        },
+        {
+          "text": "PauseEvent",
+          "complexTypes": [
+            "PauseEvent"
+          ]
+        },
+        {
+          "text": "StopEvent",
+          "complexTypes": [
+            "StopEvent"
+          ]
+        },
+        {
+          "text": "TimeUpdateEvent",
+          "complexTypes": [
+            "TimeUpdateEvent"
+          ]
+        },
+        {
+          "text": "BufferingEvent",
+          "complexTypes": [
+            "BufferingEvent"
+          ]
+        },
+        {
+          "text": "ErrorEvent",
+          "complexTypes": [
+            "ErrorEvent"
+          ]
+        }
+      ]
+    }
+  ],
+  "pluginConfigs": []
+}

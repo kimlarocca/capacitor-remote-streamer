@@ -43,6 +43,7 @@ play(options: { url: string; enableCommandCenter?: boolean; enableCommandCenterS
 
 --------------------
 
+
 ### pause()
 
 ```typescript
@@ -51,6 +52,7 @@ pause() => Promise<void>
 
 --------------------
 
+
 ### resume()
 
 ```typescript
@@ -58,6 +60,7 @@ resume() => Promise<void>
 ```
 
 --------------------
+
 
 ### seekTo(...)
 
@@ -71,6 +74,7 @@ seekTo(options: { position: number; }) => Promise<void>
 
 --------------------
 
+
 ### stop()
 
 ```typescript
@@ -79,17 +83,6 @@ stop() => Promise<void>
 
 --------------------
 
-### setLoop(...)
-
-```typescript
-setLoop(options: { loop: boolean; }) => Promise<void>
-```
-
-| Param         | Type                             |
-| ------------- | -------------------------------- |
-| **`options`** | <code>{ loop: boolean; }</code> |
-
---------------------
 
 ### setVolume(...)
 
@@ -103,6 +96,7 @@ setVolume(options: { volume: number; }) => Promise<void>
 
 --------------------
 
+
 ### setPlaybackRate(...)
 
 ```typescript
@@ -115,6 +109,7 @@ setPlaybackRate(options: { rate: number; }) => Promise<void>
 
 --------------------
 
+
 ### setNowPlayingInfo(...)
 
 ```typescript
@@ -126,6 +121,7 @@ setNowPlayingInfo(options: { title: string; artist: string; album: string; durat
 | **`options`** | <code>{ title: string; artist: string; album: string; duration: string; imageUrl: string; isLiveStream: boolean; }</code> |
 
 --------------------
+
 
 ### addListener('error' | 'play' | 'pause' | 'stop' | 'timeUpdate' | 'buffering', ...)
 
@@ -142,6 +138,7 @@ addListener(eventName: 'play' | 'pause' | 'stop' | 'timeUpdate' | 'buffering' | 
 
 --------------------
 
+
 ### removeAllListeners()
 
 ```typescript
@@ -150,7 +147,9 @@ removeAllListeners() => Promise<void>
 
 --------------------
 
+
 ### Interfaces
+
 
 #### PluginListenerHandle
 
@@ -158,11 +157,13 @@ removeAllListeners() => Promise<void>
 | ------------ | ----------------------------------------- |
 | **`remove`** | <code>() =&gt; Promise&lt;void&gt;</code> |
 
+
 #### PlayEvent
 
 | Prop       | Type                |
 | ---------- | ------------------- |
 | **`type`** | <code>'play'</code> |
+
 
 #### PauseEvent
 
@@ -170,11 +171,13 @@ removeAllListeners() => Promise<void>
 | ---------- | -------------------- |
 | **`type`** | <code>'pause'</code> |
 
+
 #### StopEvent
 
 | Prop       | Type                |
 | ---------- | ------------------- |
 | **`type`** | <code>'stop'</code> |
+
 
 #### TimeUpdateEvent
 
@@ -183,12 +186,14 @@ removeAllListeners() => Promise<void>
 | **`type`**        | <code>'timeUpdate'</code> |
 | **`currentTime`** | <code>number</code>       |
 
+
 #### BufferingEvent
 
 | Prop              | Type                     |
 | ----------------- | ------------------------ |
 | **`type`**        | <code>'buffering'</code> |
 | **`isBuffering`** | <code>boolean</code>     |
+
 
 #### ErrorEvent
 
@@ -197,7 +202,9 @@ removeAllListeners() => Promise<void>
 | **`type`**    | <code>'error'</code> |
 | **`message`** | <code>string</code>  |
 
+
 ### Type Aliases
+
 
 #### RemoteStreamerEventData
 
