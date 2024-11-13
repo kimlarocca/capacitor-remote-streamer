@@ -1,12 +1,12 @@
 {
-  "name": "@nypublicradio/capacitor-remote-streamer",
-  "repository": "git://github.com/nypublicradio/capacitor-remote-streamer.git",
+  "name": "@kimlarocca/capacitor-remote-streamer",
+  "repository": "git://github.com/kimlarocca/capacitor-remote-streamer.git",
   "version": "0.3.8",
   "description": "Stream remote HLS and MP3 streams on iOS and Android. Capacitor 6.",
   "main": "dist/plugin.cjs.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/nypublicradio/capacitor-remote-streamer.git"
+    "url": "git://github.com/kimlarocca/capacitor-remote-streamer.git"
   },
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
@@ -20,7 +20,7 @@
     "Package.swift",
     "NypublicRadioCapacitorRemoteStreamer.podspec"
   ],
-  "author": "NYPR",
+  "author": "Kim LaRocca & NYPR",
   "license": "MIT",
   "scripts": {
     "verify": "npm run verify:ios && npm run verify:android && npm run verify:web",
