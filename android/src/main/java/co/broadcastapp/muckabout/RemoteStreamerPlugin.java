@@ -50,6 +50,7 @@ import java.util.stream.Stream;
 @CapacitorPlugin(name = "RemoteStreamer")
 public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudioFocusChangeListener {
     private ExoPlayer player;
+    private boolean isLooping = false;
     private DefaultDataSource.Factory dataSourceFactory;
     private AudioManager audioManager;
     private AudioFocusRequest focusRequest;
@@ -114,7 +115,16 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
         ContextCompat.startForegroundService(getContext(), intent);
         getContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
-
+    
+    @PluginMethod
+    public void setLoop(PluginCall call) {
+        Boolean loop = call.getBoolean("loop", false);
+        this.isLooping = loop;
+        if (player != null) {
+            player.setRepeatMode(isLooping ? Player.REPEAT_MODE_ONE : Player.REPEAT_MODE_OFF);
+        }
+        call.resolve();
+    }
 
     @PluginMethod
     public void play(PluginCall call) {
@@ -138,7 +148,7 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
         handler.post(() -> {
             releasePlayer();
             player = new ExoPlayer.Builder(getContext()).build();
-
+            player.setRepeatMode(isLooping ? Player.REPEAT_MODE_ONE : Player.REPEAT_MODE_OFF); // Set repeat mode
             MediaSource mediaSource;
             if (url.contains(".m3u8")) {
                 mediaSource = new HlsMediaSource.Factory(dataSourceFactory)
