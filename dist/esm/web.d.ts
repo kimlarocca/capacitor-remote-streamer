@@ -7,6 +7,8 @@ export declare class RemoteStreamerWeb extends WebPlugin implements RemoteStream
         album: string;
         duration: string;
         imageUrl: string;
+        isLiveStream: boolean;
+        fade?: boolean;
     }): Promise<void>;
     enableComandCenter(options: {
         seek: boolean;
@@ -14,12 +16,17 @@ export declare class RemoteStreamerWeb extends WebPlugin implements RemoteStream
     private audio;
     private intervalId;
     private isLooping;
+    private fadeInterval;
+    private readonly FADE_DURATION;
+    private readonly FADE_STEP;
     setLoop(options: {
         loop: boolean;
     }): Promise<void>;
     play(options: {
         url: string;
     }): Promise<void>;
+    private fadeIn;
+    private fadeOut;
     pause(): Promise<void>;
     resume(): Promise<void>;
     seekTo(options: {

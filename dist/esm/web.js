@@ -5,12 +5,26 @@ export class RemoteStreamerWeb extends WebPlugin {
         this.audio = null;
         this.intervalId = null;
         this.isLooping = false;
+        this.fadeInterval = null;
+        this.FADE_DURATION = 2000; // 2 seconds fade
+        this.FADE_STEP = 50; // Update every 50ms
     }
     async setNowPlayingInfo(options) {
         console.log("Setting now playing info", options);
     }
     async enableComandCenter(options) {
+        var _a;
         console.log("Enabling lock screen control", options);
+        const shouldFade = (_a = options.fade) !== null && _a !== void 0 ? _a : true;
+        if (shouldFade && this.audio && !options.isLiveStream) {
+            const duration = parseInt(options.duration, 10);
+            if (!isNaN(duration)) {
+                // Setup fade out near the end
+                setTimeout(() => {
+                    this.fadeOut();
+                }, (duration * 1000) - this.FADE_DURATION);
+            }
+        }
     }
     async setLoop(options) {
         this.isLooping = options.loop;
@@ -21,6 +35,7 @@ export class RemoteStreamerWeb extends WebPlugin {
     async play(options) {
         if (this.audio) {
             console.log('plugin play() pause');
+            await this.fadeOut();
             this.audio.pause();
         }
         console.log('plugin play() after pause');
@@ -30,6 +45,7 @@ export class RemoteStreamerWeb extends WebPlugin {
         // Minimize loop gap
         this.audio.preload = "auto";
         this.audio.preservesPitch = true;
+        this.audio.volume = 0; // Start at 0 volume for fade in
         // Wait for enough data before playing
         await new Promise((resolve) => {
             if (this.audio) {
@@ -39,11 +55,54 @@ export class RemoteStreamerWeb extends WebPlugin {
         });
         this.setupEventListeners(); // Call setupEventListeners here
         await this.audio.play();
+        await this.fadeIn();
         this.notifyListeners('play', {});
         this.startTimeUpdates();
     }
+    async fadeIn() {
+        if (!this.audio)
+            return;
+        return new Promise((resolve) => {
+            let volume = 0;
+            this.audio.volume = volume;
+            this.fadeInterval = window.setInterval(() => {
+                volume = Math.min(volume + (this.FADE_STEP / this.FADE_DURATION), 1);
+                if (this.audio) {
+                    this.audio.volume = volume;
+                }
+                if (volume >= 1) {
+                    if (this.fadeInterval) {
+                        clearInterval(this.fadeInterval);
+                        this.fadeInterval = null;
+                    }
+                    resolve();
+                }
+            }, this.FADE_STEP);
+        });
+    }
+    async fadeOut() {
+        if (!this.audio)
+            return;
+        return new Promise((resolve) => {
+            let volume = this.audio.volume;
+            this.fadeInterval = window.setInterval(() => {
+                volume = Math.max(volume - (this.FADE_STEP / this.FADE_DURATION), 0);
+                if (this.audio) {
+                    this.audio.volume = volume;
+                }
+                if (volume <= 0) {
+                    if (this.fadeInterval) {
+                        clearInterval(this.fadeInterval);
+                        this.fadeInterval = null;
+                    }
+                    resolve();
+                }
+            }, this.FADE_STEP);
+        });
+    }
     async pause() {
         if (this.audio) {
+            await this.fadeOut();
             this.audio.pause();
             this.notifyListeners('pause', {});
         }
@@ -61,6 +120,7 @@ export class RemoteStreamerWeb extends WebPlugin {
     }
     async stop() {
         if (this.audio) {
+            await this.fadeOut();
             this.audio.pause();
             this.audio.src = '';
             this.audio.load();
