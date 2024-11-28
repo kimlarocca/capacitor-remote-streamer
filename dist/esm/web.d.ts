@@ -11,6 +11,7 @@ export declare class RemoteStreamerWeb extends WebPlugin implements RemoteStream
     private readonly FADE_STEP;
     private duration;
     private currentUrl;
+    private currentLoop;
     setNowPlayingInfo(options: {
         title: string;
         artist: string;

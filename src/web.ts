@@ -16,6 +16,7 @@ export class RemoteStreamerWeb
   private readonly FADE_STEP = 50; // Update every 50ms
   private duration = 0; // Track duration
   private currentUrl = ''; // Store current URL
+  private currentLoop = 0;
 
   async setNowPlayingInfo (options: {
     title: string;
@@ -42,35 +43,30 @@ export class RemoteStreamerWeb
 
   async play (options: { url: string }): Promise<void> {
     this.currentUrl = options.url;
+    this.currentLoop = 0;
+
     if (this.audio) {
-      console.log('plugin play() pause');
-      await this.fadeOut();
-      this.audio.pause();
+      await this.stop();
     }
-    console.log('plugin play() after pause');
 
     this.audio = new Audio(options.url);
-    this.audio.id = 'pluginAudioElement'; // Assigning an ID to the audio element
-    this.audio.loop = false; // Disable native looping to handle our own
     this.audio.preload = 'auto';
-    this.audio.volume = 0; // Start at 0 volume for fade in
+    this.audio.volume = 0;
 
-    // Set up loop handling
-    if (this.isLooping) {
-      this.audio.addEventListener('timeupdate', () => {
-        if (this.audio && !this.nextAudio && this.duration > 0) {
-          const timeLeft = this.duration - this.audio.currentTime;
-
-          // Start crossfade when approaching end
-          if (timeLeft <= this.CROSS_FADE_DURATION / 1000) {
-            console.log('Starting next loop');
+    const setupTimeUpdate = (audio: HTMLAudioElement) => {
+      const timeUpdateHandler = () => {
+        if (audio === this.audio && this.duration > 0) {
+          const timeLeft = this.duration - audio.currentTime;
+          if (timeLeft <= this.FADE_DURATION / 1000 && !this.nextAudio) {
             this.startNextLoop();
           }
         }
-      });
-    }
+      };
+      audio.addEventListener('timeupdate', timeUpdateHandler);
+    };
 
-    // Wait for enough data before playing
+    setupTimeUpdate(this.audio);
+
     await new Promise(resolve => {
       if (this.audio) {
         this.audio.addEventListener('canplaythrough', resolve, { once: true });
@@ -78,37 +74,34 @@ export class RemoteStreamerWeb
       }
     });
 
-    this.setupEventListeners();
     await this.audio.play();
-    // this.notifyListeners('play', {}); // KIM do we need this?
-    // this.startTimeUpdates();// KIM do we need this?
     await this.fadeIn();
   }
 
   private async startNextLoop (): Promise<void> {
     if (!this.isLooping || this.nextAudio) return;
 
-    // Create and prepare next audio instance
+    this.currentLoop++;
+    console.log(`Starting loop ${this.currentLoop}`);
+
     this.nextAudio = new Audio(this.currentUrl);
     this.nextAudio.preload = 'auto';
     this.nextAudio.volume = 0;
-    this.nextAudio.loop = false; // Ensure loop is off for next instance too
 
-    // Set up the next loop's timeupdate handler before playing
-    this.nextAudio.addEventListener('timeupdate', () => {
-      if (
-        this.nextAudio &&
-        this.nextAudio === this.audio &&
-        this.duration > 0
-      ) {
-        const timeLeft = this.duration - this.nextAudio.currentTime;
-        if (timeLeft <= this.CROSS_FADE_DURATION / 1000) {
-          this.startNextLoop();
+    const setupTimeUpdate = (audio: HTMLAudioElement) => {
+      const timeUpdateHandler = () => {
+        if (audio === this.audio && this.duration > 0) {
+          const timeLeft = this.duration - audio.currentTime;
+          if (timeLeft <= this.FADE_DURATION / 1000 && !this.nextAudio) {
+            this.startNextLoop();
+          }
         }
-      }
-    });
+      };
+      audio.addEventListener('timeupdate', timeUpdateHandler);
+    };
 
-    // Wait for next audio to be ready
+    setupTimeUpdate(this.nextAudio);
+
     await new Promise(resolve => {
       if (this.nextAudio) {
         this.nextAudio.addEventListener('canplaythrough', resolve, {
@@ -118,7 +111,6 @@ export class RemoteStreamerWeb
       }
     });
 
-    // Start playing next audio and crossfade
     if (this.nextAudio && this.audio) {
       await this.nextAudio.play();
       await this.crossFade();
@@ -132,24 +124,21 @@ export class RemoteStreamerWeb
       let progress = 0;
       const fadeInterval = setInterval(() => {
         progress += this.FADE_STEP;
-        const fadeRatio = progress / this.CROSS_FADE_DURATION;
+        const fadeRatio = progress / this.FADE_DURATION;
 
-        // Ensure volume transitions are smooth and complete
         if (this.audio) this.audio.volume = Math.max(0, 1 - fadeRatio);
         if (this.nextAudio) this.nextAudio.volume = Math.min(1, fadeRatio);
 
-        // Use CROSS_FADE_DURATION instead of FADE_DURATION for the check
-        if (progress >= this.CROSS_FADE_DURATION) {
+        if (progress >= this.FADE_DURATION) {
           clearInterval(fadeInterval);
           if (this.audio) {
-            this.audio.pause();
-            // Ensure clean handoff of audio instances
             const oldAudio = this.audio;
+            oldAudio.pause();
+            oldAudio.removeAttribute('src');
+            oldAudio.load();
+
             this.audio = this.nextAudio;
             this.nextAudio = null;
-            // Clean up old audio
-            oldAudio.src = '';
-            oldAudio.load();
           }
           resolve();
         }
