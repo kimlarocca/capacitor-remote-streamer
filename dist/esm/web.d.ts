@@ -15,16 +15,21 @@ export declare class RemoteStreamerWeb extends WebPlugin implements RemoteStream
     }): Promise<void>;
     private audio;
     private intervalId;
+    private nextAudio;
     private isLooping;
     private fadeInterval;
     private readonly FADE_DURATION;
     private readonly FADE_STEP;
+    private duration;
+    private currentUrl;
     setLoop(options: {
         loop: boolean;
     }): Promise<void>;
     play(options: {
         url: string;
     }): Promise<void>;
+    private startNextLoop;
+    private crossFade;
     private fadeIn;
     private fadeOut;
     pause(): Promise<void>;

@@ -4,16 +4,20 @@ export class RemoteStreamerWeb extends WebPlugin {
         super(...arguments);
         this.audio = null;
         this.intervalId = null;
+        this.nextAudio = null;
         this.isLooping = false;
         this.fadeInterval = null;
         this.FADE_DURATION = 1000; // 1 second fade
         this.FADE_STEP = 50; // Update every 50ms
+        this.duration = 0; // Track duration
+        this.currentUrl = ''; // Store current URL
     }
     async setNowPlayingInfo(options) {
-        console.log("Setting now playing info", options);
+        this.duration = parseFloat(options.duration);
+        console.log('Setting now playing info', options);
     }
     async enableCommandCenter(options) {
-        console.log("Enabling lock screen control", options);
+        console.log('Enabling lock screen control', options);
     }
     async setLoop(options) {
         this.isLooping = options.loop;
@@ -22,6 +26,7 @@ export class RemoteStreamerWeb extends WebPlugin {
         }
     }
     async play(options) {
+        this.currentUrl = options.url;
         if (this.audio) {
             console.log('plugin play() pause');
             await this.fadeOut();
@@ -29,32 +34,89 @@ export class RemoteStreamerWeb extends WebPlugin {
         }
         console.log('plugin play() after pause');
         this.audio = new Audio(options.url);
-        this.audio.id = "pluginAudioElement"; // Assigning an ID to the audio element
-        this.audio.loop = this.isLooping; // Set loop property
-        // Minimize loop gap
-        this.audio.preload = "auto";
+        this.audio.id = 'pluginAudioElement'; // Assigning an ID to the audio element
+        this.audio.loop = false; // Disable native looping to handle our own
+        this.audio.preload = 'auto';
         this.audio.volume = 0; // Start at 0 volume for fade in
+        // Set up loop handling
+        if (this.isLooping) {
+            this.audio.addEventListener('timeupdate', () => {
+                if (this.audio && !this.nextAudio && this.duration > 0) {
+                    const timeLeft = this.duration - this.audio.currentTime;
+                    // Start crossfade when approaching end
+                    if (timeLeft <= this.FADE_DURATION / 1000) {
+                        this.startNextLoop();
+                    }
+                }
+            });
+        }
         // Wait for enough data before playing
-        await new Promise((resolve) => {
+        await new Promise(resolve => {
             if (this.audio) {
                 this.audio.addEventListener('canplaythrough', resolve, { once: true });
                 this.audio.load();
             }
         });
-        this.setupEventListeners(); // Call setupEventListeners here
+        this.setupEventListeners();
         await this.audio.play();
         await this.fadeIn();
         this.notifyListeners('play', {});
         this.startTimeUpdates();
     }
+    async startNextLoop() {
+        if (!this.isLooping || this.nextAudio)
+            return;
+        // Create and prepare next audio instance
+        this.nextAudio = new Audio(this.currentUrl);
+        this.nextAudio.preload = 'auto';
+        this.nextAudio.volume = 0;
+        // Wait for next audio to be ready
+        await new Promise(resolve => {
+            if (this.nextAudio) {
+                this.nextAudio.addEventListener('canplaythrough', resolve, {
+                    once: true,
+                });
+                this.nextAudio.load();
+            }
+        });
+        // Start playing next audio and crossfade
+        if (this.nextAudio && this.audio) {
+            await this.nextAudio.play();
+            await this.crossFade();
+        }
+    }
+    async crossFade() {
+        if (!this.audio || !this.nextAudio)
+            return;
+        return new Promise(resolve => {
+            let progress = 0;
+            const fadeInterval = setInterval(() => {
+                progress += this.FADE_STEP;
+                const fadeRatio = progress / this.FADE_DURATION;
+                if (this.audio)
+                    this.audio.volume = Math.max(0, 1 - fadeRatio);
+                if (this.nextAudio)
+                    this.nextAudio.volume = Math.min(1, fadeRatio);
+                if (progress >= this.FADE_DURATION) {
+                    clearInterval(fadeInterval);
+                    if (this.audio) {
+                        this.audio.pause();
+                        this.audio = this.nextAudio;
+                        this.nextAudio = null;
+                    }
+                    resolve();
+                }
+            }, this.FADE_STEP);
+        });
+    }
     async fadeIn() {
         if (!this.audio)
             return;
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             let volume = 0;
             this.audio.volume = volume;
             this.fadeInterval = window.setInterval(() => {
-                volume = Math.min(volume + (this.FADE_STEP / this.FADE_DURATION), 1);
+                volume = Math.min(volume + this.FADE_STEP / this.FADE_DURATION, 1);
                 if (this.audio) {
                     this.audio.volume = volume;
                 }
@@ -71,10 +133,10 @@ export class RemoteStreamerWeb extends WebPlugin {
     async fadeOut() {
         if (!this.audio)
             return;
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             let volume = this.audio ? this.audio.volume : 0;
             this.fadeInterval = window.setInterval(() => {
-                volume = Math.max(volume - (this.FADE_STEP / this.FADE_DURATION), 0);
+                volume = Math.max(volume - this.FADE_STEP / this.FADE_DURATION, 0);
                 if (this.audio) {
                     this.audio.volume = volume;
                 }
@@ -107,6 +169,10 @@ export class RemoteStreamerWeb extends WebPlugin {
         }
     }
     async stop() {
+        if (this.nextAudio) {
+            this.nextAudio.pause();
+            this.nextAudio = null;
+        }
         if (this.audio) {
             await this.fadeOut();
             this.audio.pause();
@@ -128,7 +194,9 @@ export class RemoteStreamerWeb extends WebPlugin {
         this.stopTimeUpdates();
         this.intervalId = window.setInterval(() => {
             if (this.audio) {
-                this.notifyListeners('timeUpdate', { currentTime: this.audio.currentTime });
+                this.notifyListeners('timeUpdate', {
+                    currentTime: this.audio.currentTime,
+                });
             }
         }, 1000);
     }
@@ -148,7 +216,7 @@ export class RemoteStreamerWeb extends WebPlugin {
             this.audio.onplaying = () => this.notifyListeners('play', {});
             this.audio.onpause = () => this.notifyListeners('pause', {});
             this.audio.onended = () => this.notifyListeners('stop', { ended: true });
-            this.audio.onerror = (e) => this.notifyListeners('error', { message: `Audio error: ${e}` });
+            this.audio.onerror = e => this.notifyListeners('error', { message: `Audio error: ${e}` });
             this.audio.onwaiting = () => this.notifyListeners('buffering', { isBuffering: true });
             this.audio.oncanplaythrough = () => this.notifyListeners('buffering', { isBuffering: false });
         }
