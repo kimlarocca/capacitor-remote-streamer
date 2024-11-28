@@ -12,7 +12,7 @@ var nypublicradioCapacitorRemoteStreamer = (function (exports, core) {
             this.intervalId = null;
             this.isLooping = false;
             this.fadeInterval = null;
-            this.FADE_DURATION = 2000; // 2 seconds fade
+            this.FADE_DURATION = 1000; // 1 second fade
             this.FADE_STEP = 50; // Update every 50ms
         }
         async setNowPlayingInfo(options) {
@@ -39,7 +39,6 @@ var nypublicradioCapacitorRemoteStreamer = (function (exports, core) {
             this.audio.loop = this.isLooping; // Set loop property
             // Minimize loop gap
             this.audio.preload = "auto";
-            // this.audio.preservesPitch = true; // KIM do we need this?
             this.audio.volume = 0; // Start at 0 volume for fade in
             // Wait for enough data before playing
             await new Promise((resolve) => {

@@ -14,7 +14,7 @@ export class RemoteStreamerWeb extends WebPlugin implements RemoteStreamerPlugin
   private intervalId: number | null = null;
   private isLooping = false;
   private fadeInterval: number | null = null;
-  private readonly FADE_DURATION = 2000; // 2 seconds fade
+  private readonly FADE_DURATION = 1000; // 1 second fade
   private readonly FADE_STEP = 50; // Update every 50ms
 
   async setLoop(options: { loop: boolean }): Promise<void> {
@@ -37,7 +37,6 @@ export class RemoteStreamerWeb extends WebPlugin implements RemoteStreamerPlugin
     this.audio.loop = this.isLooping; // Set loop property
     // Minimize loop gap
     this.audio.preload = "auto";
-    // this.audio.preservesPitch = true; // KIM do we need this?
     this.audio.volume = 0; // Start at 0 volume for fade in
 
     // Wait for enough data before playing
