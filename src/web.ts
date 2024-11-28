@@ -7,18 +7,8 @@ export class RemoteStreamerWeb extends WebPlugin implements RemoteStreamerPlugin
     fade?: boolean; }): Promise<void> {
     console.log("Setting now playing info", options);
   }
-  async enableComandCenter(options: { seek: boolean; }): Promise<void> {
+  async enableCommandCenter(options: { seek: boolean; }): Promise<void> {
     console.log("Enabling lock screen control", options);
-    const shouldFade = options.fade ?? true;
-    if (shouldFade && this.audio && !options.isLiveStream) {
-      const duration = parseInt(options.duration, 10);
-      if (!isNaN(duration)) {
-        // Setup fade out near the end
-        setTimeout(() => {
-          this.fadeOut();
-        }, (duration * 1000) - this.FADE_DURATION);
-      }
-    }
   }
   private audio: HTMLAudioElement | null = null;
   private intervalId: number | null = null;
@@ -47,7 +37,7 @@ export class RemoteStreamerWeb extends WebPlugin implements RemoteStreamerPlugin
     this.audio.loop = this.isLooping; // Set loop property
     // Minimize loop gap
     this.audio.preload = "auto";
-    this.audio.preservesPitch = true;
+    // this.audio.preservesPitch = true; // KIM do we need this?
     this.audio.volume = 0; // Start at 0 volume for fade in
 
     // Wait for enough data before playing
@@ -93,7 +83,7 @@ export class RemoteStreamerWeb extends WebPlugin implements RemoteStreamerPlugin
     if (!this.audio) return;
     
     return new Promise((resolve) => {
-      let volume = this.audio.volume;
+      let volume = this.audio ? this.audio.volume : 0;
       
       this.fadeInterval = window.setInterval(() => {
         volume = Math.max(volume - (this.FADE_STEP / this.FADE_DURATION), 0);

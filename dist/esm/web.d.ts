@@ -10,7 +10,7 @@ export declare class RemoteStreamerWeb extends WebPlugin implements RemoteStream
         isLiveStream: boolean;
         fade?: boolean;
     }): Promise<void>;
-    enableComandCenter(options: {
+    enableCommandCenter(options: {
         seek: boolean;
     }): Promise<void>;
     private audio;

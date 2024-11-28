@@ -1,5 +1,14 @@
-import { WebPlugin } from '@capacitor/core';
-export class RemoteStreamerWeb extends WebPlugin {
+'use strict';
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+var core = require('@capacitor/core');
+
+const RemoteStreamer = core.registerPlugin('RemoteStreamer', {
+    web: () => Promise.resolve().then(function () { return web; }).then(m => new m.RemoteStreamerWeb()),
+});
+
+class RemoteStreamerWeb extends core.WebPlugin {
     constructor() {
         super(...arguments);
         this.audio = null;
@@ -155,4 +164,11 @@ export class RemoteStreamerWeb extends WebPlugin {
         }
     }
 }
-//# sourceMappingURL=web.js.map
+
+var web = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    RemoteStreamerWeb: RemoteStreamerWeb
+});
+
+exports.RemoteStreamer = RemoteStreamer;
+//# sourceMappingURL=plugin.cjs.js.map
