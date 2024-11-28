@@ -92,6 +92,21 @@ export class RemoteStreamerWeb
     this.nextAudio = new Audio(this.currentUrl);
     this.nextAudio.preload = 'auto';
     this.nextAudio.volume = 0;
+    this.nextAudio.loop = false; // Ensure loop is off for next instance too
+
+    // Set up the next loop's timeupdate handler before playing
+    this.nextAudio.addEventListener('timeupdate', () => {
+      if (
+        this.nextAudio &&
+        this.nextAudio === this.audio &&
+        this.duration > 0
+      ) {
+        const timeLeft = this.duration - this.nextAudio.currentTime;
+        if (timeLeft <= this.CROSS_FADE_DURATION / 1000) {
+          this.startNextLoop();
+        }
+      }
+    });
 
     // Wait for next audio to be ready
     await new Promise(resolve => {
@@ -105,7 +120,6 @@ export class RemoteStreamerWeb
 
     // Start playing next audio and crossfade
     if (this.nextAudio && this.audio) {
-      console.log('Starting next loop');
       await this.nextAudio.play();
       await this.crossFade();
     }
@@ -120,15 +134,22 @@ export class RemoteStreamerWeb
         progress += this.FADE_STEP;
         const fadeRatio = progress / this.CROSS_FADE_DURATION;
 
+        // Ensure volume transitions are smooth and complete
         if (this.audio) this.audio.volume = Math.max(0, 1 - fadeRatio);
         if (this.nextAudio) this.nextAudio.volume = Math.min(1, fadeRatio);
 
-        if (progress >= this.FADE_DURATION) {
+        // Use CROSS_FADE_DURATION instead of FADE_DURATION for the check
+        if (progress >= this.CROSS_FADE_DURATION) {
           clearInterval(fadeInterval);
           if (this.audio) {
             this.audio.pause();
+            // Ensure clean handoff of audio instances
+            const oldAudio = this.audio;
             this.audio = this.nextAudio;
             this.nextAudio = null;
+            // Clean up old audio
+            oldAudio.src = '';
+            oldAudio.load();
           }
           resolve();
         }
