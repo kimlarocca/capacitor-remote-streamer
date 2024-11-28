@@ -1,6 +1,16 @@
 import { WebPlugin } from '@capacitor/core';
 import type { RemoteStreamerPlugin } from './definitions';
 export declare class RemoteStreamerWeb extends WebPlugin implements RemoteStreamerPlugin {
+    private audio;
+    private intervalId;
+    private nextAudio;
+    private isLooping;
+    private fadeInterval;
+    private readonly FADE_DURATION;
+    private readonly CROSS_FADE_DURATION;
+    private readonly FADE_STEP;
+    private duration;
+    private currentUrl;
     setNowPlayingInfo(options: {
         title: string;
         artist: string;
@@ -13,15 +23,6 @@ export declare class RemoteStreamerWeb extends WebPlugin implements RemoteStream
     enableCommandCenter(options: {
         seek: boolean;
     }): Promise<void>;
-    private audio;
-    private intervalId;
-    private nextAudio;
-    private isLooping;
-    private fadeInterval;
-    private readonly FADE_DURATION;
-    private readonly FADE_STEP;
-    private duration;
-    private currentUrl;
     setLoop(options: {
         loop: boolean;
     }): Promise<void>;
@@ -41,7 +42,6 @@ export declare class RemoteStreamerWeb extends WebPlugin implements RemoteStream
     setPlaybackRate(options: {
         rate: number;
     }): Promise<void>;
-    private startTimeUpdates;
     private stopTimeUpdates;
     setVolume(options: {
         volume: number;

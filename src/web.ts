@@ -6,6 +6,17 @@ export class RemoteStreamerWeb
   extends WebPlugin
   implements RemoteStreamerPlugin
 {
+  private audio: HTMLAudioElement | null = null;
+  private intervalId: number | null = null;
+  private nextAudio: HTMLAudioElement | null = null;
+  private isLooping = false;
+  private fadeInterval: number | null = null;
+  private readonly FADE_DURATION = 1000; // 1 second fade
+  private readonly CROSS_FADE_DURATION = 2000; // 2 second cross fade
+  private readonly FADE_STEP = 50; // Update every 50ms
+  private duration = 0; // Track duration
+  private currentUrl = ''; // Store current URL
+
   async setNowPlayingInfo (options: {
     title: string;
     artist: string;
@@ -21,15 +32,6 @@ export class RemoteStreamerWeb
   async enableCommandCenter (options: { seek: boolean }): Promise<void> {
     console.log('Enabling lock screen control', options);
   }
-  private audio: HTMLAudioElement | null = null;
-  private intervalId: number | null = null;
-  private nextAudio: HTMLAudioElement | null = null;
-  private isLooping = false;
-  private fadeInterval: number | null = null;
-  private readonly FADE_DURATION = 1000; // 1 second fade
-  private readonly FADE_STEP = 50; // Update every 50ms
-  private duration = 0; // Track duration
-  private currentUrl = ''; // Store current URL
 
   async setLoop (options: { loop: boolean }): Promise<void> {
     this.isLooping = options.loop;
@@ -60,7 +62,8 @@ export class RemoteStreamerWeb
           const timeLeft = this.duration - this.audio.currentTime;
 
           // Start crossfade when approaching end
-          if (timeLeft <= this.FADE_DURATION / 1000) {
+          if (timeLeft <= this.CROSS_FADE_DURATION / 1000) {
+            console.log('Starting next loop');
             this.startNextLoop();
           }
         }
@@ -77,9 +80,9 @@ export class RemoteStreamerWeb
 
     this.setupEventListeners();
     await this.audio.play();
+    // this.notifyListeners('play', {}); // KIM do we need this?
+    // this.startTimeUpdates();// KIM do we need this?
     await this.fadeIn();
-    this.notifyListeners('play', {});
-    this.startTimeUpdates();
   }
 
   private async startNextLoop (): Promise<void> {
@@ -102,6 +105,7 @@ export class RemoteStreamerWeb
 
     // Start playing next audio and crossfade
     if (this.nextAudio && this.audio) {
+      console.log('Starting next loop');
       await this.nextAudio.play();
       await this.crossFade();
     }
@@ -114,7 +118,7 @@ export class RemoteStreamerWeb
       let progress = 0;
       const fadeInterval = setInterval(() => {
         progress += this.FADE_STEP;
-        const fadeRatio = progress / this.FADE_DURATION;
+        const fadeRatio = progress / this.CROSS_FADE_DURATION;
 
         if (this.audio) this.audio.volume = Math.max(0, 1 - fadeRatio);
         if (this.nextAudio) this.nextAudio.volume = Math.min(1, fadeRatio);
@@ -204,13 +208,13 @@ export class RemoteStreamerWeb
     if (this.nextAudio) {
       this.nextAudio.pause();
       this.nextAudio = null;
+      console.log('nextAudio stopped', this.audio);
     }
     if (this.audio) {
       await this.fadeOut();
       this.audio.pause();
       this.audio.src = '';
       this.audio.load();
-      this.audio.currentTime = 0;
       this.audio = null;
       this.notifyListeners('stop', {});
       this.stopTimeUpdates();
@@ -224,16 +228,17 @@ export class RemoteStreamerWeb
     }
   }
 
-  private startTimeUpdates () {
-    this.stopTimeUpdates();
-    this.intervalId = window.setInterval(() => {
-      if (this.audio) {
-        this.notifyListeners('timeUpdate', {
-          currentTime: this.audio.currentTime,
-        });
-      }
-    }, 1000);
-  }
+  // KIM do we need this?
+  // private startTimeUpdates () {
+  //   this.stopTimeUpdates();
+  //   this.intervalId = window.setInterval(() => {
+  //     if (this.audio) {
+  //       this.notifyListeners('timeUpdate', {
+  //         currentTime: this.audio.currentTime,
+  //       });
+  //     }
+  //   }, 1000);
+  // }
 
   private stopTimeUpdates () {
     if (this.intervalId !== null) {

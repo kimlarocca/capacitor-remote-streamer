@@ -17,6 +17,7 @@ class RemoteStreamerWeb extends core.WebPlugin {
         this.isLooping = false;
         this.fadeInterval = null;
         this.FADE_DURATION = 1000; // 1 second fade
+        this.CROSS_FADE_DURATION = 2000; // 2 second cross fade
         this.FADE_STEP = 50; // Update every 50ms
         this.duration = 0; // Track duration
         this.currentUrl = ''; // Store current URL
@@ -53,7 +54,8 @@ class RemoteStreamerWeb extends core.WebPlugin {
                 if (this.audio && !this.nextAudio && this.duration > 0) {
                     const timeLeft = this.duration - this.audio.currentTime;
                     // Start crossfade when approaching end
-                    if (timeLeft <= this.FADE_DURATION / 1000) {
+                    if (timeLeft <= this.CROSS_FADE_DURATION / 1000) {
+                        console.log('Starting next loop');
                         this.startNextLoop();
                     }
                 }
@@ -68,9 +70,9 @@ class RemoteStreamerWeb extends core.WebPlugin {
         });
         this.setupEventListeners();
         await this.audio.play();
+        // this.notifyListeners('play', {}); // KIM do we need this?
+        // this.startTimeUpdates();// KIM do we need this?
         await this.fadeIn();
-        this.notifyListeners('play', {});
-        this.startTimeUpdates();
     }
     async startNextLoop() {
         if (!this.isLooping || this.nextAudio)
@@ -90,6 +92,7 @@ class RemoteStreamerWeb extends core.WebPlugin {
         });
         // Start playing next audio and crossfade
         if (this.nextAudio && this.audio) {
+            console.log('Starting next loop');
             await this.nextAudio.play();
             await this.crossFade();
         }
@@ -101,7 +104,7 @@ class RemoteStreamerWeb extends core.WebPlugin {
             let progress = 0;
             const fadeInterval = setInterval(() => {
                 progress += this.FADE_STEP;
-                const fadeRatio = progress / this.FADE_DURATION;
+                const fadeRatio = progress / this.CROSS_FADE_DURATION;
                 if (this.audio)
                     this.audio.volume = Math.max(0, 1 - fadeRatio);
                 if (this.nextAudio)
@@ -181,13 +184,13 @@ class RemoteStreamerWeb extends core.WebPlugin {
         if (this.nextAudio) {
             this.nextAudio.pause();
             this.nextAudio = null;
+            console.log('nextAudio stopped', this.audio);
         }
         if (this.audio) {
             await this.fadeOut();
             this.audio.pause();
             this.audio.src = '';
             this.audio.load();
-            this.audio.currentTime = 0;
             this.audio = null;
             this.notifyListeners('stop', {});
             this.stopTimeUpdates();
@@ -199,16 +202,17 @@ class RemoteStreamerWeb extends core.WebPlugin {
             this.audio.playbackRate = options.rate;
         }
     }
-    startTimeUpdates() {
-        this.stopTimeUpdates();
-        this.intervalId = window.setInterval(() => {
-            if (this.audio) {
-                this.notifyListeners('timeUpdate', {
-                    currentTime: this.audio.currentTime,
-                });
-            }
-        }, 1000);
-    }
+    // KIM do we need this?
+    // private startTimeUpdates () {
+    //   this.stopTimeUpdates();
+    //   this.intervalId = window.setInterval(() => {
+    //     if (this.audio) {
+    //       this.notifyListeners('timeUpdate', {
+    //         currentTime: this.audio.currentTime,
+    //       });
+    //     }
+    //   }, 1000);
+    // }
     stopTimeUpdates() {
         if (this.intervalId !== null) {
             window.clearInterval(this.intervalId);
