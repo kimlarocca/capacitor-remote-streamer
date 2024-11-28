@@ -65,6 +65,7 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
             service = binder.getService();
             Intent intent = new Intent(getActivity(), getActivity().getClass());
             service.connectAndInitialize(RemoteStreamerPlugin.this, intent);
+            startMediaService();
         }
 
         @Override
@@ -367,8 +368,10 @@ public class RemoteStreamerPlugin extends Plugin implements AudioManager.OnAudio
                 () -> {
                     Log.d("RemoteStreamerPlugin", "releaseing player");
                     stopUpdatingTime();
-                    player.release();
-                    player = null;
+                    if (player != null) {
+                        player.release();
+                        player = null;
+                    }
                     audioManager.abandonAudioFocusRequest(focusRequest);
                 }
             );
